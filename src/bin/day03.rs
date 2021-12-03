@@ -7,9 +7,81 @@ fn main() -> anyhow::Result<()> {
     let power_consumption = compute_power_consumption(&map)?;
 
     println!("(day 03) part 1: {}", power_consumption);
-    println!("(day 03) part 2: {}", 2);
+
+    let life_support_rating = compute_life_support_rating(&contents);
+
+    println!("(day 03) part 2: {}", life_support_rating);
 
     Ok(())
+}
+
+// FIXME: no unwraps :)
+fn compute_life_support_rating(contents: &str) -> usize {
+    let mut lines = contents.lines().collect::<Vec<&str>>();
+    lines.sort_unstable();
+
+    let oxygen = binary_search(lines.as_slice(), 0, Commonality::Most);
+    let oxygen_rate = usize::from_str_radix(&oxygen, 2).unwrap();
+
+    let co2 = binary_search(lines.as_slice(), 0, Commonality::Least);
+    let co2_rate = usize::from_str_radix(&co2, 2).unwrap();
+
+    oxygen_rate * co2_rate
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Commonality {
+    Most,
+    Least,
+}
+
+fn binary_search(lines: &[impl AsRef<str>], column: usize, commonality: Commonality) -> String {
+    if lines.len() <= 1 {
+        return lines[0].as_ref().to_string();
+    }
+
+    let half = (lines.len() - 1) / 2;
+    let is_even = lines.len() % 2 == 0;
+
+    let most_common = if is_even {
+        select_even_half(lines, column, half)
+    } else {
+        select_uneven_half(lines, column, half)
+    };
+
+    // mirror, mirror, on the wall
+    let most_common = if let Commonality::Least = commonality {
+        if most_common == '0' {
+            '1'
+        } else {
+            '0'
+        }
+    } else {
+        most_common
+    };
+
+    let acceptable = lines
+        .iter()
+        .filter(|line| line.as_ref().chars().nth(column).unwrap() == most_common)
+        .map(|s| s.as_ref().to_string())
+        .collect::<Vec<_>>();
+
+    binary_search(&acceptable, column + 1, commonality)
+}
+
+fn select_even_half(lines: &[impl AsRef<str>], column: usize, half: usize) -> char {
+    let lower = lines[half].as_ref().chars().nth(column).unwrap();
+    let higher = lines[half + 1].as_ref().chars().nth(column).unwrap();
+
+    if lower == higher {
+        lower
+    } else {
+        '1'
+    }
+}
+
+fn select_uneven_half(lines: &[impl AsRef<str>], column: usize, half: usize) -> char {
+    lines[half].as_ref().chars().nth(column).unwrap()
 }
 
 fn compute_power_consumption(map: &ColumnMajorMap) -> anyhow::Result<usize> {
@@ -32,7 +104,8 @@ fn compute_rate(
     comparator: fn(usize, usize) -> usize,
 ) -> anyhow::Result<usize> {
     let rate = map.iter().fold(String::new(), |mut acc, (_k, v)| {
-        commonality(v.as_str(), comparator, &mut acc);
+        let most_common = commonality(v.as_str(), comparator);
+        acc.push(most_common);
         acc
     });
 
@@ -54,16 +127,16 @@ fn make_column_major_map(contents: &str) -> ColumnMajorMap {
     })
 }
 
-fn commonality<F: Fn(usize, usize) -> usize>(slice: &str, f: F, output: &mut String) {
+fn commonality<F: Fn(usize, usize) -> usize>(slice: &str, f: F) -> char {
     let ones = slice.chars().filter(|c| *c == '1').count();
     let zeros = slice.len() - ones;
 
     let max = f(zeros, ones);
 
     if max == zeros {
-        output.push('0');
+        '0'
     } else {
-        output.push('1');
+        '1'
     }
 }
 
@@ -105,20 +178,17 @@ mod tests {
         min = { std::cmp::min, ['1', '1', '1', '0', '0'] }
     )]
     fn commonality_test_max(comparator: fn(usize, usize) -> usize, expected: [char; 5]) {
-        let mut output = String::new();
-        commonality("00000", comparator, &mut output);
-        commonality("00001", comparator, &mut output);
-        commonality("01010", comparator, &mut output);
-        commonality("10101", comparator, &mut output);
-        commonality("11111", comparator, &mut output);
+        let a = commonality("00000", comparator);
+        let b = commonality("00001", comparator);
+        let c = commonality("01010", comparator);
+        let d = commonality("10101", comparator);
+        let e = commonality("11111", comparator);
 
-        let chars = output.chars().collect::<Vec<_>>();
-
-        assert_eq!(chars[0], expected[0]);
-        assert_eq!(chars[1], expected[1]);
-        assert_eq!(chars[2], expected[2]);
-        assert_eq!(chars[3], expected[3]);
-        assert_eq!(chars[4], expected[4]);
+        assert_eq!(a, expected[0]);
+        assert_eq!(b, expected[1]);
+        assert_eq!(c, expected[2]);
+        assert_eq!(d, expected[3]);
+        assert_eq!(e, expected[4]);
     }
 
     #[test]
@@ -127,5 +197,29 @@ mod tests {
         let power = compute_power_consumption(&map);
 
         assert_eq!(power.unwrap(), 198);
+    }
+
+    #[test]
+    fn part2_example() {
+        let rate = compute_life_support_rating(EXAMPLE_INPUT);
+
+        assert_eq!(rate, 230);
+    }
+
+    #[test]
+    fn part1_result() {
+        let contents = std::fs::read_to_string("inputs/day03.txt").unwrap();
+        let map = make_column_major_map(&contents);
+        let power_consumption = compute_power_consumption(&map).unwrap();
+
+        assert_eq!(power_consumption, 3009600);
+    }
+
+    #[test]
+    fn part2_result() {
+        let contents = std::fs::read_to_string("inputs/day03.txt").unwrap();
+        let life_support_rating = compute_life_support_rating(&contents);
+
+        assert_eq!(life_support_rating, 6940518);
     }
 }
