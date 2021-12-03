@@ -10,14 +10,14 @@ fn main() -> anyhow::Result<()> {
     let position = submarine.position();
 
     println!(
-        "(day 01) part 1: {}",
+        "(day 02) part 1: {}",
         position.depth * position.horizontal_position
     );
 
     let submarine: AimingSubmarine = simulator.sail(instructions.iter());
     let pos = submarine.position();
 
-    println!("(day 01) part 2: {}", pos.horizontal_position * pos.depth);
+    println!("(day 02) part 2: {}", pos.horizontal_position * pos.depth);
 
     Ok(())
 }
