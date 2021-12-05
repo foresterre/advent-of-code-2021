@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.51"
 yare = "1.0.1"
+comfy-table = "5.0.0"
