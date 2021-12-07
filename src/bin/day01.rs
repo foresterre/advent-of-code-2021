@@ -1,6 +1,6 @@
 fn main() -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string("inputs/day01.txt")?;
-    let inputs = parse(&contents);
+    let contents = include_str!("../../inputs/day01.txt");
+    let inputs = parse(contents);
 
     let part1 = count_increasing_measurements(&inputs);
     println!("(day 01) part 1: {}", part1);
@@ -36,16 +36,7 @@ mod tests {
 
     #[test]
     fn part1_example() {
-        let input = r#"199
-200
-208
-210
-200
-207
-240
-269
-260
-263"#;
+        let input = include_str!("../../inputs/example/day01.txt");
         let inputs = parse(input);
         let solution = count_increasing_measurements(&inputs);
 
@@ -54,16 +45,7 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        let input = r#"199
-200
-208
-210
-200
-207
-240
-269
-260
-263"#;
+        let input = include_str!("../../inputs/example/day01.txt");
         let inputs = parse(input);
 
         let measurement_windows = create_measurement_windows(&inputs);

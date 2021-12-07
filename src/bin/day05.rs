@@ -4,8 +4,8 @@ use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
 
 fn main() -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string("inputs/day05.txt")?;
-    let inputs = parse(&contents)?;
+    let contents = include_str!("../../inputs/day05.txt");
+    let inputs = parse(contents)?;
 
     let part1 = part1(inputs.iter());
     println!("(day 05) part 1: {}", part1);
@@ -187,16 +187,7 @@ mod tests {
 
     #[test]
     fn part1_example() {
-        let input = r#"0,9 -> 5,9
-8,0 -> 0,8
-9,4 -> 3,4
-2,2 -> 2,1
-7,0 -> 7,4
-6,4 -> 2,0
-0,9 -> 2,9
-3,4 -> 1,4
-0,0 -> 8,8
-5,5 -> 8,2"#;
+        let input = include_str!("../../inputs/example/day05.txt");
         let inputs = parse(input).unwrap();
         let part1 = part1(inputs.iter());
 
@@ -205,16 +196,7 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        let input = r#"0,9 -> 5,9
-8,0 -> 0,8
-9,4 -> 3,4
-2,2 -> 2,1
-7,0 -> 7,4
-6,4 -> 2,0
-0,9 -> 2,9
-3,4 -> 1,4
-0,0 -> 8,8
-5,5 -> 8,2"#;
+        let input = include_str!("../../inputs/example/day05.txt");
         let inputs = parse(input).unwrap();
         let part2 = part2(inputs.iter());
 

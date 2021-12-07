@@ -2,8 +2,8 @@ use anyhow::{anyhow, bail};
 use std::str::FromStr;
 
 fn main() -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string("inputs/day02.txt")?;
-    let instructions = parse(&contents)?;
+    let contents = include_str!("../../inputs/day02.txt");
+    let instructions = parse(contents)?;
 
     let simulator = SubmarineSimulator::default();
     let submarine: SimpleSubmarine = simulator.sail(instructions.iter());
@@ -138,5 +138,32 @@ impl FromStr for Direction {
             "up" => Self::Up,
             _ => bail!("Invalid instruction"),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{parse, AimingSubmarine, SimpleSubmarine, Simulation, SubmarineSimulator};
+
+    #[test]
+    fn part1_example() {
+        let input = include_str!("../../inputs/example/day02.txt");
+        let instructions = parse(input).unwrap();
+        let simulator = SubmarineSimulator::default();
+        let submarine: SimpleSubmarine = simulator.sail(instructions.iter());
+        let position = submarine.position();
+
+        assert_eq!(position.depth * position.horizontal_position, 150);
+    }
+
+    #[test]
+    fn part2_example() {
+        let input = include_str!("../../inputs/example/day02.txt");
+        let instructions = parse(input).unwrap();
+        let simulator = SubmarineSimulator::default();
+        let submarine: AimingSubmarine = simulator.sail(instructions.iter());
+        let position = submarine.position();
+
+        assert_eq!(position.depth * position.horizontal_position, 900);
     }
 }

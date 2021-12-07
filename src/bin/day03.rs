@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
 
 fn main() -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string("inputs/day03.txt")?;
+    let contents = include_str!("../../inputs/day03.txt");
+    let map = make_column_major_map(contents);
 
-    let map = make_column_major_map(&contents);
     let power_consumption = compute_power_consumption(&map)?;
-
     println!("(day 03) part 1: {}", power_consumption);
 
-    let life_support_rating = compute_life_support_rating(&contents);
-
+    let life_support_rating = compute_life_support_rating(contents);
     println!("(day 03) part 2: {}", life_support_rating);
 
     Ok(())
@@ -144,22 +142,10 @@ fn commonality<F: Fn(usize, usize) -> usize>(slice: &str, f: F) -> char {
 mod tests {
     use super::*;
 
-    const EXAMPLE_INPUT: &'static str = r#"00100
-11110
-10110
-10111
-10101
-01111
-00111
-11100
-10000
-11001
-00010
-01010"#;
-
     #[test]
     fn gamma_rate() {
-        let map = make_column_major_map(EXAMPLE_INPUT);
+        let input = include_str!("../../inputs/example/day03.txt");
+        let map = make_column_major_map(input);
         let actual = compute_gamma_rate(&map);
 
         assert_eq!(actual.unwrap(), 22);
@@ -167,7 +153,8 @@ mod tests {
 
     #[test]
     fn epsilon_rate() {
-        let map = make_column_major_map(EXAMPLE_INPUT);
+        let input = include_str!("../../inputs/example/day03.txt");
+        let map = make_column_major_map(input);
         let actual = compute_epsilon_rate(&map);
 
         assert_eq!(actual.unwrap(), 9);
@@ -193,7 +180,8 @@ mod tests {
 
     #[test]
     fn part1_example() {
-        let map = make_column_major_map(EXAMPLE_INPUT);
+        let input = include_str!("../../inputs/example/day03.txt");
+        let map = make_column_major_map(input);
         let power = compute_power_consumption(&map);
 
         assert_eq!(power.unwrap(), 198);
@@ -201,7 +189,8 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        let rate = compute_life_support_rating(EXAMPLE_INPUT);
+        let input = include_str!("../../inputs/example/day03.txt");
+        let rate = compute_life_support_rating(input);
 
         assert_eq!(rate, 230);
     }

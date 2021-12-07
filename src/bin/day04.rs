@@ -5,8 +5,8 @@ use std::str::FromStr;
 
 // close your eyes, nothing to see here <3
 fn main() -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string("inputs/day04.txt")?;
-    let (instructions, mut boards) = parse(&contents)?;
+    let contents = include_str!("../../inputs/day04.txt");
+    let (instructions, mut boards) = parse(contents)?;
 
     let score =
         part1(&instructions.0, &mut boards).with_context(|| anyhow!("No winning board found!"))?;
@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-const CHUNK_SEPARATOR: &'static str = "\n\n";
+const CHUNK_SEPARATOR: &str = "\n\n";
 const LEN: usize = 5;
 
 fn parse(input: &str) -> Result<(Instructions, Vec<Board>)> {
@@ -170,9 +170,7 @@ impl Board {
         });
 
         // check whether a full row is marked, if it is, the board is winning
-        index
-            .find(|a| Self::is_winning_row(&self.cells, *a))
-            .is_some()
+        index.any(|a| Self::is_winning_row(&self.cells, a))
     }
 
     fn is_winning_row(cells: &[Cell; LEN * LEN], row: usize) -> bool {
@@ -188,9 +186,7 @@ impl Board {
         });
 
         // check whether a full column is marked, if it is, the board is winning
-        index
-            .find(|a| Self::is_winning_column(&self.cells, *a))
-            .is_some()
+        index.any(|a| Self::is_winning_column(&self.cells, a))
     }
 
     fn is_winning_column(cells: &[Cell; LEN * LEN], col: usize) -> bool {
@@ -250,7 +246,7 @@ impl Display for Cell {
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse, part1, Board};
+    use crate::{parse, part1, part2, Board};
 
     yare::ide!();
 
@@ -318,30 +314,19 @@ mod tests {
 
     #[test]
     fn example_part1() {
-        let input = r#"7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
-
-22 13 17 11  0
- 8  2 23  4 24
-21  9 14 16  7
- 6 10  3 18  5
- 1 12 20 15 19
-
- 3 15  0  2 22
- 9 18 13 17  5
-19  8  7 25 23
-20 11 10 24  4
-14 21 16 12  6
-
-14 21 17 24  4
-10 16 15  9 19
-18  8 23 26 20
-22 11 13  6  5
- 2  0 12  3  7"#;
-
+        let input = include_str!("../../inputs/example/day04.txt");
         let (instructions, mut boards) = parse(input).unwrap();
-
         let score = part1(&instructions.0, &mut boards).unwrap();
 
         assert_eq!(score, 4512);
+    }
+
+    #[test]
+    fn example_part2() {
+        let input = include_str!("../../inputs/example/day04.txt");
+        let (instructions, mut boards) = parse(input).unwrap();
+        let score = part2(&instructions.0, &mut boards).unwrap();
+
+        assert_eq!(score, 1924);
     }
 }

@@ -1,18 +1,8 @@
 use anyhow::{anyhow, Context};
-use std::collections::{BTreeSet, HashMap};
-use std::fmt::{Debug, Formatter};
-use std::str::FromStr;
 
 fn main() -> anyhow::Result<()> {
-    let contents = std::fs::read_to_string("inputs/day06.txt")?;
-    let inputs = contents
-        .trim()
-        .split(',')
-        .map(|n| {
-            n.parse()
-                .with_context(|| anyhow!("Unable to parse fish timer value: {}", n))
-        })
-        .collect::<anyhow::Result<Vec<u32>>>()?;
+    let contents = include_str!("../../inputs/day06.txt");
+    let inputs = parse(contents)?;
 
     let part1 = solve(inputs.iter(), 80);
     println!("(day 06) part 1: {}", part1);
@@ -21,6 +11,17 @@ fn main() -> anyhow::Result<()> {
     println!("(day 06) part 2: {}", part2);
 
     Ok(())
+}
+
+fn parse(input: &str) -> anyhow::Result<Vec<u32>> {
+    input
+        .trim()
+        .split(',')
+        .map(|n| {
+            n.parse()
+                .with_context(|| anyhow!("Unable to parse fish timer value: {}", n))
+        })
+        .collect::<anyhow::Result<Vec<u32>>>()
 }
 
 fn solve<'f>(seedlings: impl Iterator<Item = &'f u32>, days: u32) -> usize {
@@ -47,4 +48,27 @@ fn solve<'f>(seedlings: impl Iterator<Item = &'f u32>, days: u32) -> usize {
     }
 
     fish.iter().sum::<usize>()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{parse, solve};
+
+    #[test]
+    fn part1_example() {
+        let input = include_str!("../../inputs/example/day06.txt");
+        let inputs = parse(input).unwrap();
+
+        let solution = solve(inputs.iter(), 80);
+        assert_eq!(solution, 5934);
+    }
+
+    #[test]
+    fn part2_example() {
+        let input = include_str!("../../inputs/example/day06.txt");
+        let inputs = parse(input).unwrap();
+
+        let solution = solve(inputs.iter(), 256);
+        assert_eq!(solution, 26984457539);
+    }
 }
