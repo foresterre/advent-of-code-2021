@@ -12,30 +12,24 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn part1(input: &str) -> usize {
+    input
+        .trim()
+        .lines()
+        .map(|line| CorruptSyntaxErrorGame::default().play::<Vec<Token>, _>(line.chars()))
+        .sum()
+}
+
 fn part2(input: &str) -> usize {
     let mut scores = input
         .trim()
         .lines()
-        .map(|line| IncompleteSyntaxErrorGame::default().play::<Vec<Token>, _>(line.chars()))
-        .filter(|&s| s != 0)
+        .filter_map(|line| IncompleteSyntaxErrorGame::default().play::<Vec<Token>, _>(line.chars()))
         .collect::<Vec<_>>();
 
     scores.sort_unstable();
 
     *scores.get(scores.len() / 2).unwrap()
-}
-
-#[derive(Copy, Clone)]
-enum Status {
-    Good, // default
-    Incomplete,
-    Corrupt(Token),
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Self::Good
-    }
 }
 
 trait SyntaxErrorGame {
@@ -63,35 +57,37 @@ struct IncompleteSyntaxErrorGame;
 impl SyntaxErrorGame for IncompleteSyntaxErrorGame {}
 
 impl IncompleteSyntaxErrorGame {
-    fn play<S, I>(&self, characters: I) -> usize
+    fn play<S, I>(&self, characters: I) -> Option<usize>
     where
         S: Stack<Token> + Default,
         I: Iterator<Item = char>,
     {
-        let incomplete = characters.fold(Some(S::default()), |stack, next| match stack {
+        let incomplete = characters.fold(Some(S::default()), |stack, next| {
+            self.step_incomplete(stack, next)
+        });
+
+        incomplete.map(|stack| {
+            stack.to_vec().iter().rfold(0_usize, |score, token| {
+                score * 5 + token.incomplete_points()
+            })
+        })
+    }
+
+    // In this step, we ensure we always return None when a Corrupt char has been seen.
+    // In an `IncompleteSyntaxErrorGame`, we want to skip any corrupt line. This is the way
+    // we'll filter them out.
+    fn step_incomplete<S>(&self, stack: Option<S>, next: char) -> Option<S>
+    where
+        S: Stack<Token> + Default,
+    {
+        match stack {
             Some(mut s) => match self.step(&mut s, next) {
                 Status::Corrupt(_) => None,
                 _ => Some(s),
             },
             None => None,
-        });
-
-        incomplete
-            .map(|stack| {
-                stack.to_vec().iter().rfold(0_usize, |score, token| {
-                    score * 5 + token.incomplete_points()
-                })
-            })
-            .unwrap_or(0)
+        }
     }
-}
-
-fn part1(input: &str) -> usize {
-    input
-        .trim()
-        .lines()
-        .map(|line| CorruptSyntaxErrorGame::default().play::<Vec<Token>, _>(line.chars()))
-        .sum()
 }
 
 #[derive(Debug, Default)]
@@ -115,17 +111,18 @@ impl CorruptSyntaxErrorGame {
             })
             .sum()
     }
+}
 
-    // Pop returns error points for faulty unmatched tokens, 😀😀😀
-    fn points<E>(&self, popped: Option<Token>, expected: E) -> usize
-    where
-        E: Into<Token> + PartialEq,
-    {
-        let expected = expected.into();
-        match popped {
-            Some(token) if token != expected => expected.corrupt_points(),
-            _ => 0,
-        }
+#[derive(Copy, Clone)]
+enum Status {
+    Good, // default
+    Incomplete,
+    Corrupt(Token),
+}
+
+impl Default for Status {
+    fn default() -> Self {
+        Self::Good
     }
 }
 
@@ -160,6 +157,21 @@ enum Token {
 }
 
 impl Token {
+    fn incomplete_points(&self) -> usize {
+        match self {
+            Self::Paren => 1,
+            Self::SquareBracket => 2,
+            Self::CurlyBrace => 3,
+            Self::TriangleBracket => 4,
+        }
+    }
+}
+
+trait CorruptPoints {
+    fn corrupt_points(&self) -> usize;
+}
+
+impl CorruptPoints for Token {
     fn corrupt_points(&self) -> usize {
         match self {
             Self::Paren => 3,
@@ -168,7 +180,13 @@ impl Token {
             Self::TriangleBracket => 25137,
         }
     }
+}
 
+trait IncompletePoints {
+    fn incomplete_points(&self) -> usize;
+}
+
+impl IncompletePoints for Token {
     fn incomplete_points(&self) -> usize {
         match self {
             Self::Paren => 1,
@@ -233,11 +251,4 @@ mod tests {
 
         assert_eq!(part2(input), 2769449099);
     }
-
-    // #[test]
-    // fn part2_solution() {
-    //     let input = include_str!("../../inputs/day10.txt");
-    //
-    //     assert_eq!(part2(input), 392421);
-    // }
 }
