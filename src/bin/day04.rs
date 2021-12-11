@@ -95,18 +95,10 @@ impl FromStr for Instructions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 struct Board {
     // 5x5 board, row-major
     cells: [Cell; LEN * LEN],
-}
-
-impl Default for Board {
-    fn default() -> Self {
-        Self {
-            cells: [Cell::default(); 25],
-        }
-    }
 }
 
 impl FromStr for Board {

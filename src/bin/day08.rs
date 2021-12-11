@@ -1,5 +1,3 @@
-use anyhow::{anyhow, Context};
-
 fn main() -> anyhow::Result<()> {
     let contents = include_str!("../../inputs/day08.txt");
     let part1 = part1(contents);

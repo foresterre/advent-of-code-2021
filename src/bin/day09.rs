@@ -76,12 +76,13 @@ fn part2(input: &[u8]) -> usize {
 }
 
 fn is_low_point(width: usize, map: &[u8], index: usize) -> bool {
-    adjacent(&map, index, width, usize::checked_sub)
-        && adjacent(&map, index, width, usize::checked_add)
-        && (index % width == 0 || adjacent(&map, index, 1, usize::checked_sub))
-        && (index % width == width - 1 || adjacent(&map, index, 1, usize::checked_add))
+    adjacent(map, index, width, usize::checked_sub)
+        && adjacent(map, index, width, usize::checked_add)
+        && (index % width == 0 || adjacent(map, index, 1, usize::checked_sub))
+        && (index % width == width - 1 || adjacent(map, index, 1, usize::checked_add))
 }
 
+#[allow(clippy::option_map_unit_fn)]
 fn check_neighbours(map: &[u8], index: usize, width: usize, seen: &mut HashSet<usize>) {
     if seen.contains(&index) {
         return;
@@ -94,18 +95,18 @@ fn check_neighbours(map: &[u8], index: usize, width: usize, seen: &mut HashSet<u
         .map(|index| check_neighbours(map, index, width, seen));
 
     // down
-    in_basin(&map, index, width, usize::checked_add)
+    in_basin(map, index, width, usize::checked_add)
         .map(|index| check_neighbours(map, index, width, seen));
 
     // left
     (index % width != 0).then(|| {
-        in_basin(&map, index, 1, usize::checked_sub)
+        in_basin(map, index, 1, usize::checked_sub)
             .map(|index| check_neighbours(map, index, width, seen))
     });
 
     // right
     (index % width != width - 1).then(|| {
-        in_basin(&map, index, 1, usize::checked_add)
+        in_basin(map, index, 1, usize::checked_add)
             .map(|index| check_neighbours(map, index, width, seen))
     });
 }
