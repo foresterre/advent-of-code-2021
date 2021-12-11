@@ -16,10 +16,7 @@ fn part2(input: &str) -> usize {
     let mut scores = input
         .trim()
         .lines()
-        .map(|line| {
-            let score = IncompleteSyntaxErrorGame::default().play::<Vec<Token>, _>(line.chars());
-            score
-        })
+        .map(|line| IncompleteSyntaxErrorGame::default().play::<Vec<Token>, _>(line.chars()))
         .filter(|&s| s != 0)
         .collect::<Vec<_>>();
 
@@ -110,12 +107,10 @@ impl CorruptSyntaxErrorGame {
     {
         characters
             .scan(S::default(), |stack, next| {
-                Some(match next {
-                    ')' | ']' | '}' | '>' => self.points(stack.pop(), next),
-                    open_char => {
-                        stack.push(open_char);
-                        0
-                    }
+                Some(match self.step(stack, next) {
+                    Status::Good => 0,
+                    Status::Corrupt(token) => token.corrupt_points(),
+                    Status::Incomplete => 0,
                 })
             })
             .sum()
@@ -137,6 +132,8 @@ impl CorruptSyntaxErrorGame {
 trait Stack<T: Debug>: IntoIterator<Item = T> + Debug {
     fn push(&mut self, element: impl Into<T>);
     fn pop(&mut self) -> Option<T>;
+
+    // If can Stack's IntoIterator::IntoIter to be bound on DoubleEndedIterator, this is no longer necessary.
     fn to_vec(self) -> Vec<T>;
 }
 
