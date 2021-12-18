@@ -1,5 +1,5 @@
 fn main() -> anyhow::Result<()> {
-    let input = include_str!("../../inputs/dayT.txt").trim();
+    let _input = include_str!("../../inputs/day_t.txt").trim();
 
     println!("(day T) part 1: {}", -1);
 
@@ -13,28 +13,28 @@ mod tests {
 
     #[test]
     fn part1_example() {
-        let input = include_str!("../../inputs/example/dayT.txt");
+        let input = include_str!("../../inputs/example/day_t.txt");
 
         assert_eq!(input.len(), 1);
     }
 
     #[test]
     fn part1_solution() {
-        let input = include_str!("../../inputs/dayT.txt");
+        let input = include_str!("../../inputs/day_t.txt");
 
         assert_eq!(input.len(), 755);
     }
 
     #[test]
     fn part2_example() {
-        let input = include_str!("../../inputs/example/dayT.txt");
+        let input = include_str!("../../inputs/example/day_t.txt");
 
         assert_eq!(input.len(), 315);
     }
 
     #[test]
     fn part2_solution() {
-        let input = include_str!("../../inputs/dayT.txt");
+        let input = include_str!("../../inputs/day_t.txt");
 
         assert_eq!(input.len(), 3016);
     }
