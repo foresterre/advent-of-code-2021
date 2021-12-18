@@ -1,26 +1,26 @@
-use anyhow::{anyhow, Context};
 use std::fmt::{Display, Formatter};
-use proc_macro::TokenTree::Literal;
 
 fn main() -> anyhow::Result<()> {
-    let input = include_str!("../../inputs/example/day16.txt").trim();
-    let mut parser = Parser::new(input);
+    let input = include_str!("../../inputs/day16.txt").trim();
+    println!("(day 16) part 1: {}", part1(input));
 
-    println!("{}", parser);
-
-    let version = parser.read_version();
-    let type_id = parser.read_type_id();
-
-    println!("{:?}", version);
-    println!("{:?}", type_id);
-
-    println!("{}", parser);
-
-    println!("(day 16) part 1: {}", -1);
-
-    println!("(day 16) part 2: {}", -1);
+    println!("(day 16) part 2: {}", part2(input));
 
     Ok(())
+}
+
+fn part1(input: &str) -> usize {
+    let mut p = Parser::new(input);
+    let packet = p.read_packet().0;
+
+    packet.count_versions()
+}
+
+fn part2(input: &str) -> usize {
+    let mut p = Parser::new(input);
+    let packet = p.read_packet().0;
+
+    packet.eval()
 }
 
 macro_rules! map_digit {
@@ -65,93 +65,266 @@ impl Parser {
         Self { bits, current: 0 }
     }
 
-    fn read_packet(&mut self) -> Packet {
+    fn read_packet(&mut self) -> (Packet, usize) {
         let version = self.read_version();
+        let type_id = self.read_type_id();
 
-        todo!()
+        let packet = match type_id {
+            TypeId::Literal => Packet::Literal(Literal {
+                version,
+                type_id,
+                num: self.read_literal(),
+            }),
+            TypeId::Operator(_) => Packet::Operator(Operator {
+                version,
+                type_id,
+                operands: self.read_operator(),
+            }),
+        };
+
+        (packet, self.current)
     }
 
     fn read_version(&mut self) -> Version {
         let slice = &self.bits[self.current..self.current + Version::SIZE];
         self.current += Version::SIZE;
 
-        Version(into_number(slice) as u8)
+        Version(bits_to_number(slice) as u8)
     }
 
     fn read_type_id(&mut self) -> TypeId {
         let slice = &self.bits[self.current..self.current + TypeId::SIZE];
         self.current += TypeId::SIZE;
 
-        TypeId::from(into_number(slice))
+        TypeId::from(bits_to_number(slice))
     }
 
     fn read_literal(&mut self) -> usize {
         let mut literal = self.bits[self.current..]
             .chunks_exact(5)
             .enumerate()
-            .take_while(|(nth, chunk)| {
-                chunk[0] == Bit::High
-            }).fold(Vec::new(), |mut acc, (n, bits)| {
+            .take_while(|(_nth, chunk)| chunk[0] == Bit::High)
+            .fold(Vec::new(), |mut acc, (_n, bits)| {
                 acc.extend_from_slice(&bits[1..]); // skip the stop marker
                 self.current += Literal::SIZE;
                 acc
             });
 
-        literal.extend_from_slice()
+        // also extend the number with the last group of  bits
+        literal.extend_from_slice(&self.bits[self.current + 1..self.current + Literal::SIZE]);
+        self.current += Literal::SIZE;
 
+        // // skip the remainder of the hex number.
+        // let skip = self.current % 16;
+        // self.current += skip;
+        //
+        // println!("lit: {}", Bits(&literal).to_string());
 
-        0
+        bits_to_number(&literal)
+    }
+
+    fn read_operator(&mut self) -> Vec<Packet> {
+        let variant = self.read_operator_variant();
+        match variant {
+            OperatorLength::LengthOfSubPackets => {
+                let length = self.read_sub_packet_length();
+                self.read_sub_packets_by_length(length)
+            }
+            OperatorLength::NumberOfSubPackets => {
+                let count = self.read_sub_packet_count();
+                self.read_sub_packets_by_count(count)
+            }
+        }
+    }
+
+    fn read_operator_variant(&mut self) -> OperatorLength {
+        let bits = &self.bits[self.current..self.current + OperatorLength::SIZE];
+        self.current += OperatorLength::SIZE;
+
+        match bits[0] {
+            Bit::Low => OperatorLength::LengthOfSubPackets,
+            Bit::High => OperatorLength::NumberOfSubPackets,
+        }
+    }
+
+    fn read_sub_packet_length(&mut self) -> usize {
+        let bits = &self.bits[self.current..self.current + 15];
+        self.current += 15;
+        bits_to_number(bits)
+    }
+
+    fn read_sub_packets_by_length(&mut self, length: usize) -> Vec<Packet> {
+        let end = self.current + length;
+
+        let mut vec = Vec::new();
+        while self.current < end {
+            vec.push(self.read_packet().0);
+        }
+
+        vec
+
+        // std::iter::repeat_with(|| self.read_packet())
+        //     .take_while(|(_packet, len)| *len < end)
+        //     .map(|(packet, _len)| packet)
+        //     .collect()
+    }
+
+    fn read_sub_packet_count(&mut self) -> usize {
+        let bits = &self.bits[self.current..self.current + 11];
+        self.current += 11;
+
+        bits_to_number(bits)
+    }
+
+    fn read_sub_packets_by_count(&mut self, count: usize) -> Vec<Packet> {
+        std::iter::repeat_with(|| self.read_packet())
+            .take(count)
+            .map(|(packet, _len)| packet)
+            .collect()
     }
 }
 
 impl Display for Parser {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            &self
-                .bits
-                .iter()
-                .map(|&bit| if bit == Bit::Low { '0' } else { '1' })
-                .collect::<String>(),
-        )?;
+        let bit_string = self
+            .bits
+            .iter()
+            .map(|&bit| if bit == Bit::Low { '0' } else { '1' })
+            .collect::<String>();
 
-        f.write_fmt(format_args!(" @ {}", self.current))
+        f.write_str(&bit_string)?;
+        f.write_fmt(format_args!(
+            "\n{}^{}",
+            " ".repeat(self.current),
+            self.current
+        ))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum Packet {
     Literal(Literal),
     Operator(Operator),
 }
 
-#[derive(Debug)]
-struct Literal {
-    version: Version,
+impl Packet {
+    fn count_versions(&self) -> usize {
+        match self {
+            Self::Literal(lit) => usize::from(lit.version.0),
+            Self::Operator(ops) => {
+                ops.operands
+                    .iter()
+                    .map(|packet| packet.count_versions())
+                    .sum::<usize>()
+                    + usize::from(ops.version.0)
+            }
+        }
+    }
+
+    fn eval(&self) -> usize {
+        match &self {
+            Packet::Literal(lit) => lit.num,
+            Packet::Operator(op) => op.eval(),
+        }
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
+struct Literal {
+    version: Version,
+    type_id: TypeId,
+    num: usize,
+}
+
+impl Literal {
+    const SIZE: usize = 5;
+}
+
+#[derive(Debug, Eq, PartialEq)]
 struct Operator {
     version: Version,
     type_id: TypeId,
     operands: Vec<Packet>,
 }
 
-#[derive(Debug, Copy, Clone)]
+impl Operator {
+    fn eval(&self) -> usize {
+        match self.type_id {
+            TypeId::Operator(OpType::Sum) => {
+                self.operands.iter().fold(0, |acc, next| acc + next.eval())
+            }
+            TypeId::Operator(OpType::Product) => {
+                self.operands.iter().fold(1, |acc, next| acc * next.eval())
+            }
+            TypeId::Operator(OpType::Maximum) => self
+                .operands
+                .iter()
+                .fold(0, |acc, next| acc.max(next.eval())),
+            TypeId::Operator(OpType::Minimum) => self
+                .operands
+                .iter()
+                .fold(usize::MAX, |acc, next| acc.min(next.eval())),
+            TypeId::Operator(OpType::LessThan) => {
+                if self.operands[0].eval() < self.operands[1].eval() {
+                    1
+                } else {
+                    0
+                }
+            }
+            TypeId::Operator(OpType::GreaterThan) => {
+                if self.operands[0].eval() > self.operands[1].eval() {
+                    1
+                } else {
+                    0
+                }
+            }
+            TypeId::Operator(OpType::EqualTo) => {
+                if self.operands[0].eval() == self.operands[1].eval() {
+                    1
+                } else {
+                    0
+                }
+            }
+            TypeId::Literal => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 struct Version(u8);
 
 impl Version {
     const SIZE: usize = 3;
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq)]
 enum TypeId {
     Literal,
+    Operator(OpType),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum OpType {
+    Sum,
+    Product,
+    Minimum,
+    Maximum,
+    GreaterThan,
+    LessThan,
+    EqualTo,
 }
 
 impl From<usize> for TypeId {
     fn from(n: usize) -> Self {
         match n {
+            0 => Self::Operator(OpType::Sum),
+            1 => Self::Operator(OpType::Product),
+            2 => Self::Operator(OpType::Minimum),
+            3 => Self::Operator(OpType::Maximum),
             4 => Self::Literal,
+            5 => Self::Operator(OpType::GreaterThan),
+            6 => Self::Operator(OpType::LessThan),
+            7 => Self::Operator(OpType::EqualTo),
             n => unimplemented!("{}", n),
         }
     }
@@ -159,6 +332,16 @@ impl From<usize> for TypeId {
 
 impl TypeId {
     const SIZE: usize = 3;
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum OperatorLength {
+    LengthOfSubPackets,
+    NumberOfSubPackets,
+}
+
+impl OperatorLength {
+    const SIZE: usize = 1;
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -176,23 +359,15 @@ impl From<Bit> for char {
     }
 }
 
-struct Bits<'l>(&'l [Bit]);
-
-impl Bits<'_> {
-    fn as_number(&self) -> usize {
-        into_number(self.0)
-    }
-}
-
-fn into_number(bits: &[Bit]) -> usize {
-    let mut i = 0_usize;
-    bits.iter().rfold(0, |mut acc, next| {
+fn bits_to_number(bits: &[Bit]) -> usize {
+    // let mut i = 0_usize;
+    bits.iter().rev().enumerate().fold(0, |acc, (i, next)| {
         let bit_value = match next {
             Bit::High => (1 << i),
             Bit::Low => 0,
         };
 
-        i += 1;
+        // i += 1;
 
         acc + bit_value
     })
@@ -200,30 +375,120 @@ fn into_number(bits: &[Bit]) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crate::{part1, Literal, OpType, Operator, Packet, Parser, TypeId, Version};
+
+    #[test]
+    fn literal() {
+        let mut p = Parser::new("D2FE28");
+        let version = p.read_version();
+        assert_eq!(version, Version(6));
+        let type_id = p.read_type_id();
+        assert_eq!(type_id, TypeId::Literal);
+        let lit = p.read_literal();
+        assert_eq!(lit, 2021);
+    }
+
+    #[test]
+    fn operator_with_len_of_subpackets() {
+        let mut p = Parser::new("38006F45291200");
+        let packets = p.read_packet().0;
+
+        let expected = Packet::Operator(Operator {
+            version: Version(1),
+            type_id: TypeId::Operator(OpType::LessThan),
+            operands: vec![
+                Packet::Literal(Literal {
+                    version: Version(6),
+                    type_id: TypeId::Literal,
+                    num: 10,
+                }),
+                Packet::Literal(Literal {
+                    version: Version(2),
+                    type_id: TypeId::Literal,
+                    num: 20,
+                }),
+            ],
+        });
+
+        assert_eq!(expected, packets)
+    }
+
+    #[test]
+    fn operator_with_count_of_subpackets() {
+        let mut p = Parser::new("EE00D40C823060");
+        let packets = p.read_packet().0;
+
+        let expected = Packet::Operator(Operator {
+            version: Version(7),
+            type_id: TypeId::Operator(OpType::Maximum),
+            operands: vec![
+                Packet::Literal(Literal {
+                    version: Version(2),
+                    type_id: TypeId::Literal,
+                    num: 1,
+                }),
+                Packet::Literal(Literal {
+                    version: Version(4),
+                    type_id: TypeId::Literal,
+                    num: 2,
+                }),
+                Packet::Literal(Literal {
+                    version: Version(1),
+                    type_id: TypeId::Literal,
+                    num: 3,
+                }),
+            ],
+        });
+
+        assert_eq!(expected, packets)
+    }
+
+    #[test]
+    fn part1_tests_1() {
+        assert_eq!(16, part1("8A004A801A8002F478"));
+    }
+    #[test]
+    fn part1_tests_2() {
+        assert_eq!(12, part1("620080001611562C8802118E34"));
+    }
+    #[test]
+    fn part1_tests_3() {
+        assert_eq!(23, part1("C0015000016115A2E0802F182340"));
+    }
+    #[test]
+    fn part1_tests_4() {
+        assert_eq!(31, part1("A0016C880162017C3686B18A3D4780"));
+    }
 
     #[test]
     fn part1_example() {
-        assert_eq!(0, 40);
+        let input = include_str!("../../inputs/example/day16.txt");
+        let actual = part1(input.trim());
+
+        assert_eq!(actual, 6);
     }
 
     #[test]
     fn part1_solution() {
         let input = include_str!("../../inputs/day16.txt");
+        let actual = part1(input.trim());
 
-        assert_eq!(0, 755);
+        assert_eq!(actual, 866);
     }
 
     #[test]
     fn part2_example() {
-        let input = include_str!("../../inputs/example/day16.txt");
+        let input = "9C0141080250320F1802104A08";
+        let actual = Parser::new(input.trim()).read_packet().0;
 
-        assert_eq!(0, 315);
+        assert_eq!(actual.eval(), 1);
     }
 
     #[test]
     fn part2_solution() {
         let input = include_str!("../../inputs/day16.txt");
+        let actual = Parser::new(input.trim()).read_packet().0;
 
-        assert_eq!(0, 3016);
+        assert_eq!(actual.eval(), 1392637195518);
     }
 }
