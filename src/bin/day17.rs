@@ -1,43 +1,51 @@
 use std::cmp::Ordering;
+use std::fmt::{Display, Formatter};
 
 fn main() -> anyhow::Result<()> {
     let input = include_str!("../../inputs/day17.txt").trim();
 
-    let area = parse(input);
+    let target = parse(input);
 
-    let option = generate_simulations(&area);
-    dbg!(option);
+    println!("(day 17) part 1: {}", part1(&target));
 
-    println!("(day 17) part 1: {}", part1(&area));
-
-    println!("(day 17) part 2: {}", -1);
+    println!("(day 17) part 2: {}", part2(&target));
 
     Ok(())
 }
 
-fn part1(area: &Area) -> isize {
+// Simply find maximum possible vertical velocity using the given velocity formula.
+// Then calculate height ('distance') by taking the sum of increasing integers.
+fn part1(area: &Area) -> i32 {
     let yy = (area.min_y).abs() - 1;
 
     (yy * (yy + 1)) / 2
 }
 
 // How to do this one more cleverly than simulating each 'ray'
-// At least we could try inversing the rays; but there's probably a way to calculate it?
-fn part2(area: &Area) -> isize {
-    // TODO: wip
-    generate_simulations(area).unwrap()
+// At least we could try inverting the rays; but there's probably a way to calculate it?
+fn part2(area: &Area) -> usize {
+    Simulator::from_tuples((area.min_x - 90, area.max_x + 0), (-150, 150)).run_simulations(area)
 }
 
-fn generate_simulations(area: &Area) -> Option<isize> {
-    for vy in (0_isize..10300).rev() {
-        for vx in (-100_isize..100).rev() {
-            let mut sim = Simulation::new(Step::new(Velocity::new(vx, vy)));
-            if let Some(v) = sim.simulate(area, 200) {
-                return Some(v);
-            }
-        }
+struct Simulator {
+    xx: (i32, i32),
+    yy: (i32, i32),
+}
+
+impl Simulator {
+    fn from_tuples(xx: (i32, i32), yy: (i32, i32)) -> Self {
+        Self { xx, yy }
     }
-    None
+
+    fn run_simulations(&self, area: &Area) -> usize {
+        (self.xx.0..=self.xx.1)
+            .map(|vx| {
+                (self.yy.0..=self.yy.1)
+                    .filter(|&vy| Simulation::new(Step::new(Velocity::new(vx, vy))).simulate(area))
+                    .count()
+            })
+            .sum()
+    }
 }
 
 struct Simulation {
@@ -49,35 +57,35 @@ impl Simulation {
         Self { step: initial_step }
     }
 
-    fn simulate(&mut self, target: &Area, max_steps: usize) -> Option<isize> {
-        for _ in 0..max_steps {
-            if target.is_inside(self.step.position) {
-                return Some(self.step.position.y);
-            }
+    fn simulate(&self, target: &Area) -> bool {
+        self.step
+            .into_iter()
+            .take_while(|step| {
+                let restriction_x = step.position.x <= target.max_x;
+                let restriction_y = step.position.y >= target.min_y;
 
-            self.step = self.step.next();
-        }
-
-        None
+                restriction_x && restriction_y
+            })
+            .any(|step| target.is_inside(step.position))
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 struct Velocity {
-    x: isize,
-    y: isize,
+    x: i32,
+    y: i32,
 }
 
 impl Velocity {
-    fn new(x: isize, y: isize) -> Self {
+    fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
 }
 
 #[derive(Debug, Copy, Clone)]
 struct Position {
-    x: isize,
-    y: isize,
+    x: i32,
+    y: i32,
 }
 
 impl Default for Position {
@@ -86,7 +94,7 @@ impl Default for Position {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct Step {
     position: Position,
     velocity: Velocity,
@@ -99,8 +107,12 @@ impl Step {
             position: Position::default(),
         }
     }
+}
 
-    fn next(&self) -> Self {
+impl Iterator for Step {
+    type Item = Self;
+
+    fn next(&mut self) -> Option<Self::Item> {
         let Position { x: px, y: py } = self.position;
         let Velocity { x: vx, y: vy } = self.velocity;
 
@@ -110,29 +122,39 @@ impl Step {
             Ordering::Equal => 0,
         };
 
-        Self {
-            position: Position {
-                x: px + vx,
-                y: py + vy,
-            },
-            velocity: Velocity {
-                x: new_vx,
-                y: vy - 1,
-            },
-        }
+        self.position = Position {
+            x: px + vx,
+            y: py + vy,
+        };
+
+        self.velocity = Velocity {
+            x: new_vx,
+            y: vy - 1,
+        };
+
+        Some(*self)
+    }
+}
+
+impl Display for Step {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "p = ({}, {}), v = ({}, {})",
+            self.position.x, self.position.y, self.velocity.x, self.velocity.y
+        ))
     }
 }
 
 #[derive(Debug)]
 struct Area {
-    min_x: isize,
-    max_x: isize,
-    min_y: isize,
-    max_y: isize,
+    min_x: i32,
+    max_x: i32,
+    min_y: i32,
+    max_y: i32,
 }
 
 impl Area {
-    fn new(x: (isize, isize), y: (isize, isize)) -> Self {
+    fn new(x: (i32, i32), y: (i32, i32)) -> Self {
         Self {
             min_x: x.0.min(x.1),
             max_x: x.0.max(x.1),
@@ -142,8 +164,8 @@ impl Area {
     }
 
     fn is_inside(&self, position: Position) -> bool {
-        (self.min_x <= position.x && position.x <= self.max_x)
-            && (self.max_y <= position.y && position.y <= self.max_y)
+        (position.x >= self.min_x && position.x <= self.max_x)
+            && (position.y >= self.min_y && position.y <= self.max_y)
     }
 }
 
@@ -165,7 +187,7 @@ fn parse(input: &str) -> Area {
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse, part1, Area};
+    use crate::{parse, part1, part2};
 
     #[test]
     fn part1_example() {
@@ -186,14 +208,16 @@ mod tests {
     #[test]
     fn part2_example() {
         let input = include_str!("../../inputs/example/day17.txt");
+        let area = parse(input);
 
-        assert_eq!(input.len(), 0);
+        assert_eq!(part2(&area), 112);
     }
 
     #[test]
     fn part2_solution() {
         let input = include_str!("../../inputs/day17.txt");
+        let area = parse(input);
 
-        assert_eq!(input.len(), 0);
+        assert_eq!(part2(&area), 2371);
     }
 }
