@@ -15,27 +15,27 @@ mod tests {
     fn part1_example() {
         let input = include_str!("../../inputs/example/day_t.txt");
 
-        assert_eq!(input.len(), 1);
+        assert_eq!(input.len(), 0);
     }
 
     #[test]
     fn part1_solution() {
         let input = include_str!("../../inputs/day_t.txt");
 
-        assert_eq!(input.len(), 755);
+        assert_eq!(input.len(), 0);
     }
 
     #[test]
     fn part2_example() {
         let input = include_str!("../../inputs/example/day_t.txt");
 
-        assert_eq!(input.len(), 315);
+        assert_eq!(input.len(), 0);
     }
 
     #[test]
     fn part2_solution() {
         let input = include_str!("../../inputs/day_t.txt");
 
-        assert_eq!(input.len(), 3016);
+        assert_eq!(input.len(), 0);
     }
 }
