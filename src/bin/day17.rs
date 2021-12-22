@@ -24,7 +24,7 @@ fn part1(area: &Area) -> i32 {
 // How to do this one more cleverly than simulating each 'ray'
 // At least we could try inverting the rays; but there's probably a way to calculate it?
 fn part2(area: &Area) -> usize {
-    Simulator::from_tuples((area.min_x - 90, area.max_x + 0), (-150, 150)).run_simulations(area)
+    Simulator::from_tuples((area.min_x - 90, area.max_x), (-150, 150)).run_simulations(area)
 }
 
 struct Simulator {
@@ -82,16 +82,10 @@ impl Velocity {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 struct Position {
     x: i32,
     y: i32,
-}
-
-impl Default for Position {
-    fn default() -> Self {
-        Self { x: 0, y: 0 }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
